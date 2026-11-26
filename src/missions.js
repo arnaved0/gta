@@ -69,7 +69,7 @@ export class Missions {
     const job = JOBS[i](this);
     this.active = { job, i, stepIdx: -1, step: null, lines: [], lineT: 0, timer: null };
     if (this.giverMarker) { this.scene.remove(this.giverMarker); this.giverMarker = null; }
-    this.ui.big(job.title, '', '', 2.6);
+    this.ui.big(job.title, '', 'gold', 3); this.ui.letterbox(3.2);
     this.sfx.checkpoint();
     job.start?.();
     this.nextStep();
@@ -97,7 +97,8 @@ export class Missions {
     const a = this.active;
     a.job.cleanup?.(true);
     this.clearMarkers();
-    this.ui.big('JOB DONE', `+$${a.job.reward}`, 'gold', 4);
+    this.ui.big('JOB DONE', `+$${a.job.reward}`, 'gold', 4); this.ui.letterbox(4);
+    this.ui.feed(`Job complete: <b>${a.job.title}</b>`, 'job', 6);
     this.sfx.stingerWin();
     this.addMoney(a.job.reward);
     this.game.stats.jobs++;
@@ -106,7 +107,7 @@ export class Missions {
     this.active = null; this.cooldown = 6;
     document.getElementById('objective').innerHTML = '';
     if (this.index >= 4) setTimeout(() => this.ui.subtitle('<b>Dre:</b> That\'s every job I had. Port Isaac\'s yours now. Go have fun.', 6), 4200);
-    else setTimeout(() => this.ui.help('Dre has more work. Head back to the <b style="color:#ffd23a">D</b> on the beach.', 5), 4300);
+    else setTimeout(() => this.ui.feed('<b>Dre:</b> got another one for you. come back to the beach', 'job', 7), 4300);
     this.placeGiver();
   }
   fail(reason) {

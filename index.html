@@ -4,20 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Port Isaac</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌴</text></svg>" />
 </head>
 <body>
   <canvas id="game"></canvas>
 
+  <div id="slides"><div class="slide"></div><div class="slide"></div></div>
   <div id="loading">
-    <div class="art">
-      <div class="sun"></div>
-      <svg class="palms" viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice"><path d="M60 200 Q70 120 64 70 M64 70 q-30 -6 -52 10 M64 70 q-20 -24 -44 -24 M64 70 q4 -28 30 -36 M64 70 q28 -10 52 6 M64 70 q22 8 30 32 M330 200 Q322 130 336 90 M336 90 q-26 -8 -48 4 M336 90 q-14 -22 -36 -26 M336 90 q8 -24 32 -28 M336 90 q26 -2 42 16 M336 90 q16 14 18 36" stroke="#1a0d22" stroke-width="7" fill="none" stroke-linecap="round"/><rect y="186" width="400" height="14" fill="#1a0d22"/></svg>
-    </div>
     <h1 class="logo">PORT <span>ISAAC</span></h1>
+    <div class="spin"><i></i><span id="load-text">Loading</span></div>
     <div class="bar"><div id="load-bar"></div></div>
-    <p id="load-text">Loading the city…</p>
   </div>
+  <div id="letterbox"><i></i><i></i></div>
+  <div id="flash"></div>
 
   <div id="hud">
     <div id="help"></div>
@@ -33,6 +34,7 @@
       <canvas id="minimap" width="300" height="190"></canvas>
       <div class="bars"><div class="b hp"><i id="hp"></i></div><div class="b ar"><i id="ar"></i></div></div>
     </div>
+    <div id="feed"></div>
     <div id="area"><b id="area-name"></b><small id="veh-name"></small></div>
     <div id="crosshair"></div>
     <div id="subtitle"></div>

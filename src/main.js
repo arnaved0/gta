@@ -51,6 +51,27 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
 });
 
+/* ================================================================== loading-screen slideshow */
+const slideshow = (() => {
+  const els = [...document.querySelectorAll('#slides .slide')];
+  const cards = [0, 1, 2].map((i) => `${BASE}art/card${i}.jpg${V}`);
+  cards.forEach((u) => { const im = new Image(); im.src = u; });
+  let i = Math.floor(Math.random() * cards.length), layer = 0, timer = null;
+  function next() {
+    const el = els[layer], other = els[1 - layer];
+    el.style.backgroundImage = `url("${cards[i]}")`;
+    el.className = `slide on kb${i % 3}`;
+    void el.offsetWidth;
+    other.classList.remove('on');
+    layer = 1 - layer; i = (i + 1) % cards.length;
+  }
+  return {
+    start() { if (timer) return; $('slides').classList.remove('hidden'); next(); timer = setInterval(next, 7000); },
+    stop() { clearInterval(timer); timer = null; $('slides').classList.add('hidden'); },
+  };
+})();
+slideshow.start();
+
 /* ================================================================== loading */
 const manager = new THREE.LoadingManager();
 let loaded = 0;
@@ -63,7 +84,7 @@ const [playerGltf, extraJson, xbotGltf, michelleGltf, soldierGltf] = await Promi
   loadGLTF('models/player.gltf.json'), loadJSON('anims/extra.json'),
   loadGLTF('models/xbot.gltf.json'), loadGLTF('models/michelle.gltf.json'), loadGLTF('models/soldier.gltf.json'),
 ]).catch((e) => { $('load-text').textContent = 'Failed to load: ' + e.message; throw e; });
-setProgress(0.85, 'Building Port Isaac…');
+setProgress(0.85, 'Building Port Isaac');
 await new Promise((r) => setTimeout(r, 30));
 
 const extraClips = extraJson.map((j) => THREE.AnimationClip.parse(j));
@@ -117,7 +138,7 @@ ocean.rotation.x = -Math.PI / 2; ocean.position.set(WATER_X - 1500 + 30, -0.35, 
 
 /* ================================================================== world */
 const city = buildCity(scene, 7);
-setProgress(0.95, 'Hiring pedestrians…');
+setProgress(0.95, 'Hiring pedestrians');
 const sfx = new Sfx();
 const input = new Input(canvas);
 const cam = new GameCamera(camera);
@@ -175,7 +196,7 @@ const wanted = (world.wanted = {
   level: 0, unseen: 0, lastSeen: 0,
   set(n, why) {
     n = clamp(Math.round(n), 0, 5);
-    if (n > this.level) { sfx.star(); this.unseen = 0; }
+    if (n > this.level) { sfx.star(); this.unseen = 0; if (this.level === 0) feed('The police are looking for you.', 'cop', 4); }
     this.level = n; updateStars();
   },
   bump(min, add = 0) { this.set(Math.max(min, this.level + add)); },
@@ -414,8 +435,8 @@ function updatePickups(dt) {
       if (p.type === 'health' && player.health >= 100) continue;
       if (p.type === 'armor' && player.armor >= 100) continue;
       if (p.type === 'cash') { addMoney(p.amount, p.group.position); sfx.cash(); }
-      if (p.type === 'health') { player.health = 100; sfx.pickup(); help('Health restored.', 2); }
-      if (p.type === 'armor') { player.armor = 100; sfx.pickup(); help('Body armor equipped.', 2); }
+      if (p.type === 'health') { player.health = 100; sfx.pickup(); feed('Health restored.', 'health', 3); }
+      if (p.type === 'armor') { player.armor = 100; sfx.pickup(); feed('Body armor equipped.', 'cop', 3); }
       if (p.type === 'gun') {
         game.ammo = Math.min(999, game.ammo + p.amount); sfx.pickup();
         if (!game.hasGun) { game.hasGun = true; game.weapon = 'gun'; help('You picked up a carbine. Hold <kbd>RMB</kbd> to aim and <kbd>LMB</kbd> to fire. <kbd>1</kbd>/<kbd>2</kbd> switch weapons.', 7); }
@@ -650,6 +671,7 @@ function die(cause) {
     sfx.radio.stop();
   }
   game.deathKind = 'dead'; game.deathT = 0;
+  flash(); letterbox(4.8);
   big('WASTED', '', 'red', 4.5);
   sfx.stingerLose();
   canvas.style.filter = 'grayscale(1) contrast(1.15) brightness(0.85)';
@@ -664,6 +686,7 @@ world.bust = () => {
     player.inCar = null; player.carState = null; car.doorPos(player.pos); sfx.radio.stop();
   }
   player.vel.set(0, 0, 0);
+  flash(); letterbox(4.8);
   big('BUSTED', '', 'blue', 4.5);
   sfx.stingerLose();
   canvas.style.filter = 'saturate(0.3) brightness(0.9)';
@@ -710,6 +733,17 @@ function updateWeapon() {
   $('ammo').textContent = game.weapon === 'gun' ? String(game.ammo) : '';
   $('crosshair').classList.toggle('show', game.weapon === 'gun' && !player.inCar);
 }
+const feedIcons = { cash: ['$', '#8ef08a'], job: ['D', '#ffd23a'], cop: ['★', '#7aa8ff'], info: ['i', '#ffffff'], health: ['+', '#ff6a7a'] };
+function feed(html, kind = 'info', secs = 6) {
+  const [t, c] = feedIcons[kind] || feedIcons.info;
+  const el = document.createElement('div'); el.className = 'n';
+  el.innerHTML = `<span class="ic" style="background:${c}">${t}</span><span>${html}</span>`;
+  const f = $('feed'); f.prepend(el);
+  while (f.children.length > 4) f.lastChild.remove();
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 600); }, secs * 1000);
+}
+function letterbox(secs = 3) { $('letterbox').classList.add('on'); clearTimeout(letterbox.t); letterbox.t = setTimeout(() => $('letterbox').classList.remove('on'), secs * 1000); }
+function flash() { const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); }
 let helpT = 0;
 function help(html, secs = 4) { $('help').innerHTML = html; $('help').classList.add('show'); helpT = secs; }
 let subT = 0;
@@ -727,7 +761,7 @@ function popup(text, worldPos) {
   el.style.left = `${(tmpV.x * 0.5 + 0.5) * innerWidth}px`; el.style.top = `${(-tmpV.y * 0.5 + 0.5) * innerHeight}px`;
   $('hud').appendChild(el); setTimeout(() => el.remove(), 1100);
 }
-const ui = { help, subtitle, big, showArea, popup, addMoney, updateBars };
+const ui = { help, subtitle, big, showArea, popup, addMoney, updateBars, feed, letterbox };
 
 /* ---------------- minimap */
 const mm = $('minimap').getContext('2d');
@@ -899,6 +933,7 @@ function startPlaying() {
   if (game.state === 'menu') newGame();
   game.state = 'playing';
   input.enabled = true;
+  slideshow.stop();
   showScreen(null);
   if (player.inCar) sfx.radio.start();
 }
@@ -930,6 +965,7 @@ function newGame() {
   updateMoney(); updateBars(); updateWeapon(); updateStars();
   showArea(DISTRICTS.beach.name);
   setTimeout(() => help('Welcome to <b>Port Isaac</b>. A yellow <b style="color:#ffd23a">D</b> on your map means someone has work for you. Walk into the marker.', 7), 1200);
+  setTimeout(() => feed('<b>Dre:</b> yo you made it. come find me on the beach, got work', 'job', 8), 4000);
 }
 
 /* ---------------- cheats (typed while playing) */
@@ -945,7 +981,7 @@ const CHEATS = {
   HIGHNOON: () => { game.time = 12 * 60; },
 };
 function checkCheats() {
-  for (const [code, fn] of Object.entries(CHEATS)) if (input.typed.endsWith(code)) { fn(); input.typed = ''; help(`Cheat activated: <b>${code}</b>`, 2.5); sfx.pickup(); }
+  for (const [code, fn] of Object.entries(CHEATS)) if (input.typed.endsWith(code)) { fn(); input.typed = ''; feed(`Cheat activated: <b>${code}</b>`, 'info', 4); sfx.pickup(); }
 }
 
 /* ================================================================== main loop */
@@ -1092,7 +1128,7 @@ function tick(rawDt) {
       wanted.unseen += dt;
       const limit = 8 + wanted.level * 5;
       $('stars').classList.toggle('flash', wanted.unseen > 3);
-      if (wanted.unseen > limit) { wanted.clear(); help('You lost the cops.', 2.5); }
+      if (wanted.unseen > limit) { wanted.clear(); feed('You lost the cops.', 'cop', 4); }
     } else $('stars').classList.remove('flash');
     if (playing) spawnPolice(dt);
 
@@ -1106,7 +1142,11 @@ function tick(rawDt) {
   // ---- death / arrest sequence
   if (game.deathKind) {
     game.deathT += rawDt;
-    if (game.deathT > 5) respawn();
+    // camera slowly pulls up and away, like a news chopper
+    cam.pitch += (0.85 - cam.pitch) * damp(0.6, rawDt);
+    cam.targetDist = Math.min(14, cam.targetDist + rawDt * 1.6);
+    cam.yaw += rawDt * 0.12;
+    if (game.deathT > 5) { respawn(); cam.targetDist = 5; cam.pitch = 0.28; }
   }
 
   // ---- camera
