@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32 } from './util.js';
+import * as TG from './texgen.js';
 
 /* ---------------------------------------------------------------- layout */
 export const BLOCK = 72;          // road centre to road centre
@@ -114,42 +115,20 @@ function facadeTex(style, rnd) {
   return { map: tex(c), emissive: tex(e) };
 }
 
-function makeTextures(rnd) {
-  const T = {};
-  // asphalt
-  { const [c, g] = canvas(512); noiseFill(g, 512, 512, '#3a3b3e', 0.16, rnd, 30000, 2); T.asphalt = tex(c); }
-  // road with markings: texture spans road width (u) x 16 m (v)
-  {
-    const [c, g] = canvas(256, 256); noiseFill(g, 256, 256, '#38393c', 0.15, rnd, 8000, 2);
-    const px = 256 / ROAD;
-    g.fillStyle = '#e0b52a'; g.fillRect(128 - 0.35 * px, 0, 0.18 * px, 256); g.fillRect(128 + 0.17 * px, 0, 0.18 * px, 256);
-    g.fillStyle = '#dcdcd4';
-    g.fillRect(0.5 * px, 0, 0.18 * px, 256); g.fillRect(256 - 0.68 * px, 0, 0.18 * px, 256);
-    g.fillStyle = 'rgba(0,0,0,0.12)'; g.fillRect(2.6 * px, 0, 2.6 * px, 256); g.fillRect(256 - 5.2 * px, 0, 2.6 * px, 256);
-    T.road = tex(c);
-  }
-  // intersection with crosswalks
-  {
-    const [c, g] = canvas(256); noiseFill(g, 256, 256, '#38393c', 0.15, rnd, 8000, 2);
-    const px = 256 / ROAD; g.fillStyle = '#e4e4dc';
-    for (let i = 1.4; i < ROAD - 1.4; i += 1.4) {
-      g.fillRect(i * px, 0, 0.7 * px, 2.4 * px); g.fillRect(i * px, 256 - 2.4 * px, 0.7 * px, 2.4 * px);
-      g.fillRect(0, i * px, 2.4 * px, 0.7 * px); g.fillRect(256 - 2.4 * px, i * px, 2.4 * px, 0.7 * px);
-    }
-    T.cross = tex(c, true, false);
-  }
-  // sidewalk tiles
-  {
-    const [c, g] = canvas(256); noiseFill(g, 256, 256, '#a9a59c', 0.1, rnd, 8000, 2);
-    g.strokeStyle = 'rgba(60,55,50,0.35)'; g.lineWidth = 2;
-    for (let i = 0; i <= 256; i += 64) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 256); g.stroke(); g.beginPath(); g.moveTo(0, i); g.lineTo(256, i); g.stroke(); }
-    T.sidewalk = tex(c);
-  }
-  { const [c, g] = canvas(256); noiseFill(g, 256, 256, '#4d7a35', 0.22, rnd, 20000, 2); T.grass = tex(c); }
-  { const [c, g] = canvas(256); noiseFill(g, 256, 256, '#dcc79a', 0.14, rnd, 20000, 1); T.sand = tex(c); }
-  { const [c, g] = canvas(256); noiseFill(g, 256, 256, '#6b6560', 0.2, rnd, 6000, 3); T.roof = tex(c); }
-  { const [c, g] = canvas(128); noiseFill(g, 128, 128, '#8a5a3a', 0.15, rnd, 3000, 2); g.strokeStyle = 'rgba(0,0,0,.25)'; for (let i = 0; i < 128; i += 10) { g.beginPath(); g.moveTo(0, i); g.lineTo(128, i); g.stroke(); } T.wood = tex(c); }
-  for (const s of ['glass', 'concrete', 'brick', 'stucco', 'pastel', 'mint', 'house']) T[s] = facadeTex(s, rnd);
+function makeTextures(rnd, hi = true) {
+  const S = hi ? 1024 : 512, s2 = hi ? 512 : 256;
+  const T = {
+    asphalt: TG.finalize(TG.asphalt(rnd, S)),
+    road: TG.finalize(TG.road(rnd, ROAD, S)),
+    cross: TG.finalize(TG.crossing(rnd, ROAD, S)),
+    sidewalk: TG.finalize(TG.sidewalk(rnd, S)),
+    grass: TG.finalize(TG.grass(rnd, s2)),
+    sand: TG.finalize(TG.sand(rnd, s2)),
+    roof: TG.finalize(TG.gravelRoof(rnd, s2)),
+    wood: TG.finalize(TG.wood(rnd, s2)),
+  };
+  T.cross.map.wrapS = T.cross.map.wrapT = THREE.ClampToEdgeWrapping;
+  for (const st of ['glass', 'concrete', 'brick', 'stucco', 'pastel', 'mint', 'house']) T[st] = TG.finalize(TG.facade(st, rnd, S));
   return T;
 }
 
@@ -206,7 +185,7 @@ function planeAt(w, d, x, y, z, uvW = 0, uvD = 0, rotUV = false) {
 /* ---------------------------------------------------------------- city */
 export function buildCity(scene, seed = 1234) {
   const rnd = mulberry32(seed);
-  const T = makeTextures(rnd);
+  const T = makeTextures(rnd, typeof window === 'undefined' || !/q=low/.test(location.search));
   const city = {
     group: new THREE.Group(), boxes: [], circles: [], ramps: [], lots: [], blocks: [], signs: [],
     nightMats: [], lampPositions: [], textures: T, parkingSpots: [], shops: [],
@@ -350,32 +329,28 @@ export function buildCity(scene, seed = 1234) {
   }
 
   // ---------------- materials & merge
+  const pbr = (t, extra = {}) => new THREE.MeshStandardMaterial({ map: t.map, normalMap: t.normalMap, roughnessMap: t.ormMap, metalnessMap: t.ormMap, roughness: 1, metalness: 1, ...extra });
   const M = {
-    asphalt: new THREE.MeshStandardMaterial({ map: T.asphalt, roughness: 0.95 }),
-    road: new THREE.MeshStandardMaterial({ map: T.road, roughness: 0.9 }),
-    cross: new THREE.MeshStandardMaterial({ map: T.cross, roughness: 0.9 }),
-    sidewalk: new THREE.MeshStandardMaterial({ map: T.sidewalk, roughness: 0.92 }),
-    grass: new THREE.MeshStandardMaterial({ map: T.grass, roughness: 1 }),
-    sand: new THREE.MeshStandardMaterial({ map: T.sand, roughness: 1 }),
-    wood: new THREE.MeshStandardMaterial({ map: T.wood, roughness: 0.9 }),
-    rail: new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.6 }),
-    roof: new THREE.MeshStandardMaterial({ map: T.roof, roughness: 0.95 }),
-    tile: new THREE.MeshStandardMaterial({ color: 0xb4553a, roughness: 0.85, flatShading: true }),
-    metal: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.7, roughness: 0.4 }),
-    white: new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.7 }),
-    dark: new THREE.MeshStandardMaterial({ color: 0x2a2b2e, roughness: 0.8 }),
-    trunk: new THREE.MeshStandardMaterial({ color: 0x7a5c3e, roughness: 1 }),
-    frond: new THREE.MeshStandardMaterial({ color: 0x3f7a2c, roughness: 0.9, side: THREE.DoubleSide }),
-    leaf: new THREE.MeshStandardMaterial({ color: 0x3d6e2e, roughness: 1, flatShading: true }),
-    water: new THREE.MeshStandardMaterial({ color: 0x3f8fae, roughness: 0.3 }),
-    awning: new THREE.MeshStandardMaterial({ color: 0xc8463c, roughness: 0.8 }),
-    pump: new THREE.MeshStandardMaterial({ color: 0xd23b30, roughness: 0.6 }),
-    hedge: new THREE.MeshStandardMaterial({ color: 0x35602a, roughness: 1 }),
+    asphalt: pbr(T.asphalt), road: pbr(T.road), cross: pbr(T.cross), sidewalk: pbr(T.sidewalk),
+    grass: pbr(T.grass), sand: pbr(T.sand), wood: pbr(T.wood), roof: pbr(T.roof),
+    rail: new THREE.MeshStandardMaterial({ color: 0xf2f2f2, roughness: 0.5 }),
+    tile: new THREE.MeshStandardMaterial({ color: 0xa9503a, roughness: 0.75, flatShading: true }),
+    metal: new THREE.MeshStandardMaterial({ color: 0x9aa0a6, metalness: 0.8, roughness: 0.35 }),
+    white: new THREE.MeshStandardMaterial({ color: 0xeeebe4, roughness: 0.6 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x2a2b2e, roughness: 0.7 }),
+    trunk: new THREE.MeshStandardMaterial({ color: 0x6e5238, roughness: 1 }),
+    frond: new THREE.MeshStandardMaterial({ color: 0x3a6e28, roughness: 0.85, side: THREE.DoubleSide }),
+    leaf: new THREE.MeshStandardMaterial({ color: 0x3b6a2a, roughness: 0.95 }),
+    water: new THREE.MeshStandardMaterial({ color: 0x2f7f9e, roughness: 0.05, metalness: 0.3 }),
+    awning: new THREE.MeshStandardMaterial({ color: 0xb8402f, roughness: 0.8 }),
+    pump: new THREE.MeshStandardMaterial({ color: 0xc8342a, roughness: 0.45 }),
+    hedge: new THREE.MeshStandardMaterial({ color: 0x2f5a24, roughness: 1 }),
   };
+  for (const k of ['asphalt', 'road', 'cross', 'sidewalk']) M[k].normalScale.set(0.5, 0.5);
   for (const s of ['glass', 'concrete', 'brick', 'stucco', 'pastel', 'mint', 'house']) {
     M[s] = new THREE.MeshStandardMaterial({
-      map: T[s].map, emissiveMap: T[s].emissive, emissive: 0xffffff, emissiveIntensity: 0,
-      roughness: s === 'glass' ? 0.25 : 0.85, metalness: s === 'glass' ? 0.5 : 0,
+      map: T[s].map, normalMap: T[s].normalMap, roughnessMap: T[s].ormMap, metalnessMap: T[s].ormMap, roughness: 1, metalness: 1,
+      emissiveMap: T[s].emissive, emissive: 0xffffff, emissiveIntensity: 0, envMapIntensity: 1.6,
     });
     city.nightMats.push(M[s]);
   }
@@ -457,6 +432,16 @@ function fillBlock(b, L, add, city, rnd) {
     const cellW = style === 'glass' ? 2.2 : 3.2, cellH = style === 'house' ? 3.2 : 3.6;
     add(style, wallsGeo(w, h, d, x, CURB, z, cellW, cellH, rnd));
     add('roof', planeAt(w, d, x, CURB + h, z, 6, 6));
+    if (style !== 'house' && style !== 'glass') {
+      // ground-floor plinth and stone ledges every few floors break up the boxes
+      add('white', boxAt(w + 0.3, 0.9, d + 0.3, x, CURB, z));
+      const step = cellH * (3 + ((rnd() * 2) | 0));
+      for (let y = step; y < h - 1; y += step) add('white', boxAt(w + 0.35, 0.28, d + 0.35, x, CURB + y - 0.14, z));
+      add('white', boxAt(w + 0.6, 0.5, d + 0.6, x, CURB + h - 0.5, z)); // cornice
+    } else if (style === 'glass') {
+      add('metal', boxAt(w + 0.2, 0.35, d + 0.2, x, CURB + h - 0.35, z));
+      add('dark', boxAt(w + 0.1, 4.2, d + 0.1, x, CURB, z)); // dark lobby band
+    }
     if (opts.parapet !== false && style !== 'house') {
       add('roof', boxAt(w, 0.8, 0.3, x, CURB + h, z - d / 2 + 0.15));
       add('roof', boxAt(w, 0.8, 0.3, x, CURB + h, z + d / 2 - 0.15));
@@ -560,9 +545,15 @@ function fillBlock(b, L, add, city, rnd) {
     // 1-2 towers + a plaza
     const n = rnd() < 0.5 ? 1 : 2;
     if (n === 1) {
-      const w = 26 + rnd() * 12, h = 70 + rnd() * 70;
-      building('glass', w, h, w, cx, cz);
-      if (rnd() < 0.6) building('glass', w * 0.7, 14, w * 0.7, cx, cz, {}); // podium overlap is fine
+      // stepped tower: podium, shaft, setback crown and a spire
+      const w = 28 + rnd() * 10, h = 70 + rnd() * 70;
+      building(rnd() < 0.5 ? 'concrete' : 'stucco', lot - 4, 12, lot - 4, cx, cz);
+      const shaft = (o) => { add('glass', wallsGeo(o.w, o.h, o.w, cx, CURB + o.y, cz, 2.2, 3.6, rnd)); add('roof', planeAt(o.w, o.w, cx, CURB + o.y + o.h, cz, 6, 6)); add('metal', boxAt(o.w + 0.4, 0.5, o.w + 0.4, cx, CURB + o.y + o.h - 0.5, cz)); };
+      shaft({ w, h: h * 0.7, y: 12 });
+      shaft({ w: w * 0.76, h: h * 0.22, y: 12 + h * 0.7 });
+      shaft({ w: w * 0.5, h: h * 0.08 + 4, y: 12 + h * 0.92 });
+      add('metal', new THREE.CylinderGeometry(0.15, 0.4, 16, 6).translate(cx, CURB + 12 + h + 12, cz));
+      city.boxes.push({ x0: cx - w / 2, x1: cx + w / 2, z0: cz - w / 2, z1: cz + w / 2, h: CURB + 12 + h, kind: 'building' });
       add('dark', boxAt(lot, 0.03, lot, cx, CURB, cz, 4));
     } else {
       building(rnd() < 0.7 ? 'glass' : 'concrete', 20, 45 + rnd() * 60, lot - 6, lx0 + 12, cz);

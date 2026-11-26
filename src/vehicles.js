@@ -112,9 +112,9 @@ function buildCarMesh(typeKey, color) {
   })());
 
   const group = new THREE.Group();
-  const paint = mat(`paint${color}`, () => new THREE.MeshPhysicalMaterial({ color, metalness: 0.45, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.12 }));
+  const paint = mat(`paint${color}`, () => new THREE.MeshPhysicalMaterial({ color, metalness: 0.55, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.06, envMapIntensity: 2.2 }));
   const body = new THREE.Mesh(G.body, paint); body.castShadow = true;
-  const glass = new THREE.Mesh(G.cabin, mat('glass', () => new THREE.MeshPhysicalMaterial({ color: 0x0d1418, metalness: 0.2, roughness: 0.05, transparent: true, opacity: 0.5, depthWrite: false })));
+  const glass = new THREE.Mesh(G.cabin, mat('glass', () => new THREE.MeshPhysicalMaterial({ color: 0x0d1418, metalness: 0.4, roughness: 0.02, transparent: true, opacity: 0.55, depthWrite: false, envMapIntensity: 2.5 })));
   glass.renderOrder = 2;
   const trim = new THREE.Mesh(G.trim, mat('trim', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 })));
   const lights = new THREE.Mesh(G.lights, mat('lights', () => new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })));

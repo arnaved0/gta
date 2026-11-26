@@ -5,6 +5,9 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js';
 import './style.css';
@@ -26,11 +29,11 @@ import { Missions } from './missions.js';
 const $ = (id) => document.getElementById(id);
 const BASE = import.meta.env.BASE_URL;
 const V = `?v=${typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev'}`;
-const QUALITY = new URLSearchParams(location.search).get('q') || 'high';
+const QUALITY = new URLSearchParams(location.search).get('q') || 'high'; // high | med | low
 
 /* ================================================================== renderer */
 const canvas = $('game');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: QUALITY !== 'low', powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, QUALITY === 'low' ? 1 : 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = QUALITY !== 'low';
@@ -43,12 +46,51 @@ scene.fog = new THREE.Fog(0xffb07a, 190, 700);
 const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 2500);
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+let gtao = null;
+if (QUALITY === 'high') {
+  gtao = new GTAOPass(scene, camera, innerWidth, innerHeight);
+  gtao.updateGtaoMaterial({ radius: 1.4, distanceExponent: 1.5, thickness: 2.5, scale: 1.2, samples: 12 });
+  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 12 });
+  gtao.blendIntensity = 0.85;
+  composer.addPass(gtao);
+}
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.3, 0.45, 1.05);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
+// film grade: split toning (warm highlights, cool shadows), contrast curve, saturation, vignette, grain, edge fringing
+const grade = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uNight: { value: 0 }, uRes: { value: new THREE.Vector2(innerWidth, innerHeight) } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float uTime; uniform float uNight; uniform vec2 uRes; varying vec2 vUv;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453); }
+    void main(){
+      vec2 d = vUv - 0.5; float r2 = dot(d, d);
+      vec2 off = d * r2 * 0.006;
+      vec3 c = vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b);
+      float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      // split toning
+      vec3 shadowTint = mix(vec3(0.94, 1.0, 1.08), vec3(0.88, 0.95, 1.15), uNight);
+      vec3 highTint = mix(vec3(1.07, 1.0, 0.9), vec3(1.05, 0.98, 0.92), uNight);
+      c *= mix(shadowTint, highTint, smoothstep(0.15, 0.75, l));
+      // saturation & S-curve
+      c = mix(vec3(l), c, 1.14);
+      c = clamp(c, 0.0, 1.0);
+      c = clamp((c - 0.45) * 1.08 + 0.45, 0.0, 1.0);
+      c = mix(c, c * c * (3.0 - 2.0 * c), 0.25 * smoothstep(0.15, 0.5, l));
+      // vignette + grain
+      c *= 1.0 - smoothstep(0.18, 0.75, r2 * 1.6) * mix(0.38, 0.22, uNight);
+      c += (hash(vUv * uRes + fract(uTime) * 100.0) - 0.5) * 0.025;
+      gl_FragColor = vec4(c, 1.0);
+    }`,
+});
+composer.addPass(grade);
+const smaa = QUALITY !== 'low' ? new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio()) : null;
+if (smaa) composer.addPass(smaa);
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+  grade.uniforms.uRes.value.set(innerWidth, innerHeight);
 });
 
 /* ================================================================== loading-screen slideshow */
@@ -97,8 +139,8 @@ skyU.turbidity.value = 6; skyU.rayleigh.value = 1.6; skyU.mieCoefficient.value =
 const hemi = new THREE.HemisphereLight(0xbcd7ff, 0x5a4a3a, 1.0); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xffffff, 2.5);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -70, right: 70, top: 70, bottom: -70, near: 1, far: 400 });
+sun.shadow.mapSize.setScalar(QUALITY === 'high' ? 4096 : 2048);
+Object.assign(sun.shadow.camera, { left: -85, right: 85, top: 85, bottom: -85, near: 1, far: 450 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
 scene.add(sun, sun.target);
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -872,16 +914,17 @@ function updateSky(dt) {
   skyU.sunPosition.value.copy(sunDir);
   skyU.rayleigh.value = lerp(0.4, 1.6 + golden * 1.2, day);
   skyU.turbidity.value = 4 + golden * 6;
-  renderer.toneMappingExposure = lerp(0.62, 0.55, day);
+  renderer.toneMappingExposure = lerp(0.85, 0.55, day);
   // directional light: sun by day, moon by night
   const lightDir = elev > -0.05 ? sunDir : new THREE.Vector3(-0.4, 0.8, 0.3).normalize();
   sun.position.copy(player.pos).addScaledVector(lightDir, 200);
   sun.target.position.copy(player.pos);
   sun.intensity = elev > -0.05 ? lerp(0.0, 2.0, clamp(elev / 0.25, 0, 1)) + 0.05 : 0.6;
+  grade.uniforms.uNight.value = night; grade.uniforms.uTime.value = world.time;
   bloom.strength = lerp(0.08, 0.55, night); bloom.threshold = lerp(1.6, 0.95, night);
   sun.color.setRGB(1, lerp(0.55, 0.96, clamp(elev / 0.4, 0, 1)), lerp(0.35, 0.9, clamp(elev / 0.4, 0, 1)));
   if (elev <= -0.05) sun.color.setRGB(0.6, 0.7, 1);
-  hemi.intensity = lerp(0.45, 1.0, day);
+  hemi.intensity = lerp(0.65, 1.0, day);
   hemi.color.setRGB(lerp(0.35, 0.75, day), lerp(0.42, 0.84, day), lerp(0.75, 1, day));
   const fogDay = new THREE.Color(0xc9d8e6), fogGold = new THREE.Color(0xf0a070), fogNight = new THREE.Color(0x0b1020);
   scene.fog.color.copy(fogDay).lerp(fogGold, golden * 0.85).lerp(fogNight, night);
