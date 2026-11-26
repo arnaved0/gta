@@ -650,7 +650,7 @@ function die(cause) {
     sfx.radio.stop();
   }
   game.deathKind = 'dead'; game.deathT = 0;
-  big('FLATLINED', '', 'red', 4.5);
+  big('WASTED', '', 'red', 4.5);
   sfx.stingerLose();
   canvas.style.filter = 'grayscale(1) contrast(1.15) brightness(0.85)';
   game.slowmo = 0.35;
@@ -664,7 +664,7 @@ world.bust = () => {
     player.inCar = null; player.carState = null; car.doorPos(player.pos); sfx.radio.stop();
   }
   player.vel.set(0, 0, 0);
-  big('CUFFED', '', 'blue', 4.5);
+  big('BUSTED', '', 'blue', 4.5);
   sfx.stingerLose();
   canvas.style.filter = 'saturate(0.3) brightness(0.9)';
   game.slowmo = 0.5;
