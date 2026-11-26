@@ -105,7 +105,7 @@ export class Missions {
     localStorage.setItem('pv.job', String(this.index));
     this.active = null; this.cooldown = 6;
     document.getElementById('objective').innerHTML = '';
-    if (this.index >= 4) setTimeout(() => this.ui.subtitle('<b>Dre:</b> That\'s every job I had. Port Vesper\'s yours now. Go have fun.', 6), 4200);
+    if (this.index >= 4) setTimeout(() => this.ui.subtitle('<b>Dre:</b> That\'s every job I had. Port Isaac\'s yours now. Go have fun.', 6), 4200);
     else setTimeout(() => this.ui.help('Dre has more work. Head back to the <b style="color:#ffd23a">D</b> on the beach.', 5), 4300);
     this.placeGiver();
   }

@@ -197,7 +197,7 @@ export class Player {
         this.vel.y = 0; this.onGround = true; this.airTime = 0;
       } else { this.onGround = false; this.airTime += dt; }
     }
-    // swimming is not a thing in Port Vesper
+    // swimming is not a thing in Port Isaac
     if (this.pos.y < -1.0 && !this.dead) world.damagePlayer(200, null, true, 'drown');
 
     const hs = Math.hypot(this.vel.x, this.vel.z);

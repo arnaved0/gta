@@ -24,7 +24,7 @@ export const DISTRICTS = {
   midtown: { name: 'Midtown', color: '#5b5f58' },
   eastside: { name: 'Eastside', color: '#5e5850' },
   hills: { name: 'Palm Hills', color: '#4f6248' },
-  beach: { name: 'Vesper Beach', color: '#6a6250' },
+  beach: { name: 'Isaac Beach', color: '#6a6250' },
   park: { name: 'Lakeside Park', color: '#3f6b3a' },
 };
 
@@ -449,7 +449,7 @@ function glowTex() {
 export { glowTex };
 
 /* ---------------------------------------------------------------- block contents */
-const SHOP_NAMES = ['CLUCK SHACK', 'VESPER MART', 'DONUT PLANET', 'TACO LOCO', 'PAWN KINGS', 'LAUNDRO-MAT', 'PHONE ZONE', 'NOODLE BAR', 'LIQUOR', 'PIZZA PALACE', 'NAIL STUDIO', 'GYM 24/7'];
+const SHOP_NAMES = ['CLUCK SHACK', 'ISAAC MART', 'DONUT PLANET', 'TACO LOCO', 'PAWN KINGS', 'LAUNDRO-MAT', 'PHONE ZONE', 'NOODLE BAR', 'LIQUOR', 'PIZZA PALACE', 'NAIL STUDIO', 'GYM 24/7'];
 
 function fillBlock(b, L, add, city, rnd) {
   const { lx0, lx1, lz0, lz1, lot, cx, cz } = L;
@@ -529,7 +529,7 @@ function fillBlock(b, L, add, city, rnd) {
   if (s === 'police') {
     building('brick', 36, 14, 24, cx, cz - 6);
     add('sidewalk', boxAt(lot, 0.02, 14, cx, CURB, cz + 17));
-    sign('VESPER POLICE DEPT.', cx, CURB + 10, cz + 6.05, 0, 20, 2.4, '#14284a', '#ffffff');
+    sign('ISAAC POLICE DEPT.', cx, CURB + 10, cz + 6.05, 0, 20, 2.4, '#14284a', '#ffffff');
     add('dark', boxAt(0.2, 10, 0.2, cx + 16, CURB, cz + 8)); // flag pole
     b.door = [cx, b.z1 + 1];
     return;

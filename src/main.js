@@ -63,7 +63,7 @@ const [playerGltf, extraJson, xbotGltf, michelleGltf, soldierGltf] = await Promi
   loadGLTF('models/player.gltf.json'), loadJSON('anims/extra.json'),
   loadGLTF('models/xbot.gltf.json'), loadGLTF('models/michelle.gltf.json'), loadGLTF('models/soldier.gltf.json'),
 ]).catch((e) => { $('load-text').textContent = 'Failed to load: ' + e.message; throw e; });
-setProgress(0.85, 'Building Port Vesper…');
+setProgress(0.85, 'Building Port Isaac…');
 await new Promise((r) => setTimeout(r, 30));
 
 const extraClips = extraJson.map((j) => THREE.AnimationClip.parse(j));
@@ -810,7 +810,7 @@ function drawBigMap() {
   g.drawImage(city.mapCanvas, 0, oy, city.mapCanvas.width * sc, city.mapCanvas.height * sc);
   const to = (x, z) => [(x - BOUNDS.x0) * MAP_SCALE * sc, oy + (z - BOUNDS.z0) * MAP_SCALE * sc];
   g.font = 'italic 900 16px Georgia'; g.textAlign = 'center'; g.fillStyle = 'rgba(255,255,255,.75)';
-  const labels = [['VESPER BEACH', WATER_X + 20, -200], ['DOWNTOWN', 0, 0], ['MIDTOWN', -80, 110], ['EASTSIDE', 200, -60], ['PALM HILLS', 140, 250], ['LAKESIDE PARK', 36, -110], ['THE PIER', WATER_X - 50, 18]];
+  const labels = [['ISAAC BEACH', WATER_X + 20, -200], ['DOWNTOWN', 0, 0], ['MIDTOWN', -80, 110], ['EASTSIDE', 200, -60], ['PALM HILLS', 140, 250], ['LAKESIDE PARK', 36, -110], ['THE PIER', WATER_X - 50, 18]];
   for (const [t, x, z] of labels) { const [sx, sy] = to(x, z); g.fillText(t, sx, sy); }
   for (const b of mapBlips()) {
     const [sx, sy] = to(b.x, b.z);
@@ -929,7 +929,7 @@ function newGame() {
   game.time = 17 * 60 + 30;
   updateMoney(); updateBars(); updateWeapon(); updateStars();
   showArea(DISTRICTS.beach.name);
-  setTimeout(() => help('Welcome to <b>Port Vesper</b>. A yellow <b style="color:#ffd23a">D</b> on your map means someone has work for you. Walk into the marker.', 7), 1200);
+  setTimeout(() => help('Welcome to <b>Port Isaac</b>. A yellow <b style="color:#ffd23a">D</b> on your map means someone has work for you. Walk into the marker.', 7), 1200);
 }
 
 /* ---------------- cheats (typed while playing) */
