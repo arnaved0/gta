@@ -109,7 +109,7 @@ export class Player {
       const gh = groundHeight(city, this.pos.x, this.pos.z);
       if (this.pos.y < gh) { this.pos.y = gh; this.vel.y = 0; }
       const e = Math.min(1, this.downT * 2.5);
-      this.root.position.copy(this.pos); this.root.rotation.y = this.facing;
+      this.root.position.copy(this.pos); this.root.rotation.set(0, this.facing, 0, 'XYZ');
       this.model.rotation.x = -(1 - (1 - e) ** 3) * Math.PI / 2; this.model.position.y = e * 0.15;
       this.play('fall', 0.2);
       this.mixer.update(dt * (1 - e * 0.9));
@@ -204,7 +204,7 @@ export class Player {
     this.speedH = hs;
     if (len > 0 && !this.aiming && !firing && this.attackT <= 0) this.facing = angleLerp(this.facing, Math.atan2(dx, dz), damp(this.onGround ? 12 : 5, dt));
     this.root.position.copy(this.pos);
-    this.root.rotation.y = this.facing;
+    this.root.rotation.set(0, this.facing, 0, 'XYZ');
     this.model.rotation.set(0, 0, 0); this.model.position.set(0, 0, 0);
 
     if (this.onGround && hs > 1) {
@@ -329,7 +329,7 @@ export class Player {
     this.root.rotation.set(0, this.facing, 0);
     if (this.carState === 'driving' || this.carState === 'entering' || this.carState === 'exiting') {
       // tilt with the car body
-      this.root.rotation.set(car.group.rotation.x, this.facing, car.group.rotation.z, 'YXZ');
+      this.root.rotation.set(car.pitch, this.facing, car.roll, 'YXZ');
     }
     this.mixer.update(dt);
     this.jiggle.update(dt, 0);

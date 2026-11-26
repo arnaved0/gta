@@ -913,7 +913,7 @@ function updateSky(dt) {
   const night = 1 - clamp((elev + 0.02) / 0.14, 0, 1);
   skyU.sunPosition.value.copy(sunDir);
   skyU.rayleigh.value = lerp(0.4, 1.6 + golden * 1.2, day);
-  skyU.turbidity.value = 4 + golden * 6;
+  skyU.turbidity.value = 3 + golden * 3; skyU.mieCoefficient.value = 0.0025; skyU.mieDirectionalG.value = 0.78;
   renderer.toneMappingExposure = lerp(0.85, 0.55, day);
   // directional light: sun by day, moon by night
   const lightDir = elev > -0.05 ? sunDir : new THREE.Vector3(-0.4, 0.8, 0.3).normalize();
@@ -1031,7 +1031,9 @@ function checkCheats() {
 const timer = new THREE.Timer(); timer.connect(document);
 let spawnT = 0, lastArea = '', bigmapT = 0, heartbeatT = 0;
 
+let frozen = false;
 function frame(ts) {
+  if (frozen) { requestAnimationFrame(frame); return; }
   timer.update(ts);
   const d = timer.getDelta();
   tick(clamp(d, 0, 1 / 25));
@@ -1269,6 +1271,10 @@ window.__game = {
   game, world, player, cam, input, missions, wanted, sfx, camera,
   play() { sfx.init(); game.state = 'menu'; startPlaying(); input.dragLook = true; },
   info() { return renderer.info.render; },
+  freeze(v) { frozen = v; },
+  render() { composer.render(); },
+  tick: (dt) => tick(dt),
+  Car, scene, city, makePed, deployCops, removeCar, game,
   sim(secs) { const keys = new Set(input.keys); for (let t = 0; t < secs; t += 1 / 30) { for (const k of keys) input.keys.add(k); tick(1 / 30); } },
   key(code, frames = 1) { input.keys.add(code); input.pressed.add(code); setTimeout(() => input.keys.delete(code), frames * 16); },
 };
