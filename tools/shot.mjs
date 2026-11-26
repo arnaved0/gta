@@ -1,0 +1,11 @@
+import { chromium } from '/opt/npm-tools/node_modules/playwright/index.mjs';
+const [url, out, wait='2000', w='1400', h='500'] = process.argv.slice(2);
+const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--autoplay-policy=no-user-gesture-required'] });
+const p = await b.newPage({ viewport: { width: +w, height: +h } });
+p.on('console', (m) => console.log('console:', m.text().slice(0, 300)));
+p.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+await p.goto(url);
+await p.waitForTimeout(+wait);
+if (process.env.EVAL) console.log(await p.evaluate(process.env.EVAL));
+await p.screenshot({ path: out });
+await b.close();

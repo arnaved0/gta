@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Port Vesper</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌴</text></svg>" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="loading">
+    <div class="art">
+      <div class="sun"></div>
+      <svg class="palms" viewBox="0 0 400 200" preserveAspectRatio="xMidYMax slice"><path d="M60 200 Q70 120 64 70 M64 70 q-30 -6 -52 10 M64 70 q-20 -24 -44 -24 M64 70 q4 -28 30 -36 M64 70 q28 -10 52 6 M64 70 q22 8 30 32 M330 200 Q322 130 336 90 M336 90 q-26 -8 -48 4 M336 90 q-14 -22 -36 -26 M336 90 q8 -24 32 -28 M336 90 q26 -2 42 16 M336 90 q16 14 18 36" stroke="#1a0d22" stroke-width="7" fill="none" stroke-linecap="round"/><rect y="186" width="400" height="14" fill="#1a0d22"/></svg>
+    </div>
+    <h1 class="logo">PORT <span>VESPER</span></h1>
+    <div class="bar"><div id="load-bar"></div></div>
+    <p id="load-text">Loading the city…</p>
+  </div>
+
+  <div id="hud">
+    <div id="help"></div>
+    <div id="radio"></div>
+    <div id="tr">
+      <div id="clock">18:00</div>
+      <div id="weapon"><span id="weapon-icon"></span><span id="ammo"></span></div>
+      <div id="money">$0</div>
+      <div id="stars"></div>
+      <div id="objective"></div>
+    </div>
+    <div id="mm-wrap">
+      <canvas id="minimap" width="300" height="190"></canvas>
+      <div class="bars"><div class="b hp"><i id="hp"></i></div><div class="b ar"><i id="ar"></i></div></div>
+    </div>
+    <div id="area"><b id="area-name"></b><small id="veh-name"></small></div>
+    <div id="crosshair"></div>
+    <div id="subtitle"></div>
+    <div id="big"><div id="big-main"></div><div id="big-sub"></div></div>
+    <div id="vignette"></div>
+    <div id="bigmap"><canvas id="bigmap-c" width="900" height="900"></canvas><div class="legend">TAB to close · <b style="color:#ffd84a">●</b> job · <b style="color:#5ad1ff">●</b> hospital · <b style="color:#7aa8ff">●</b> police · <b style="color:#9cff9c">●</b> pickups</div></div>
+  </div>
+
+  <section id="menu" class="screen">
+    <div class="title-wrap">
+      <h1 class="logo big">PORT <span>VESPER</span></h1>
+      <p class="tagline">Sun. Sand. Bad decisions.</p>
+      <div class="menu-row">
+        <button id="btn-play" class="primary">Play</button>
+      </div>
+      <details class="controls">
+        <summary>Controls</summary>
+        <div class="grid">
+          <div><kbd>W A S D</kbd> Move / drive</div>
+          <div><kbd>Mouse</kbd> Look (click to capture)</div>
+          <div><kbd>Shift</kbd> Sprint</div>
+          <div><kbd>Space</kbd> Jump · Handbrake</div>
+          <div><kbd>F</kbd> Enter / steal / exit car</div>
+          <div><kbd>LMB</kbd> Punch · Shoot</div>
+          <div><kbd>RMB</kbd> Aim</div>
+          <div><kbd>1</kbd>/<kbd>2</kbd>/<kbd>Q</kbd> Fists / gun / switch</div>
+          <div><kbd>R</kbd> Change radio station</div>
+          <div><kbd>E</kbd> Horn · Wave</div>
+          <div><kbd>C</kbd> Crouch</div>
+          <div><kbd>V</kbd> Camera distance</div>
+          <div><kbd>Tab</kbd> Map</div>
+          <div><kbd>M</kbd> Mute · <kbd>Esc</kbd> Pause</div>
+        </div>
+        <p class="fine">Walk into a yellow marker to start a job. Type secret words while playing for a few surprises.</p>
+      </details>
+      <label class="opt"><input type="checkbox" id="opt-fullscreen" checked /> Fullscreen</label>
+    </div>
+  </section>
+
+  <section id="pause" class="screen">
+    <div class="card">
+      <h2>Paused</h2>
+      <p id="pause-stats"></p>
+      <button id="btn-resume" class="primary">Resume</button>
+    </div>
+  </section>
+
+  <footer id="credits">An original parody · Mixamo animations · Three.js · all music generated live</footer>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
